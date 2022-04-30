@@ -22,18 +22,14 @@ class CassettoneMenuItem extends PopupMenu.PopupBaseMenuItem {
     constructor(info, params) {
         super(params);
         this.box = new St.BoxLayout({ style_class: 'popup-combobox-item', style: 'padding: 0px;' });
-        this.info = info;   // TODO should get passed a proper info
+        this.info = info;
 
-        // TEMP
-        let icon = St.TextureCache.get_default().load_gicon(null, Gio.content_type_get_icon("inode/directory"), 24);
+        let icon = St.TextureCache.get_default().load_gicon(null, Gio.content_type_get_icon(info.content_type), 24);
 
-        // TEMP
-        let display_text = info.text;
-
-        this.box.add(icon);
-
+        let display_text = info.display_name;
         let label = new St.Label({ text: display_text, y_align: Clutter.ActorAlign.CENTER });
-
+        
+        this.box.add(icon);
         this.box.add(label);
         this.addActor(this.box);
     }
@@ -64,18 +60,60 @@ class CassettoneApplet extends Applet.IconApplet{
         this.cassettoneScrollBox.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC);
         this.cassettoneScrollBox.add_style_class_name("vfade");
 
-        let button = new CassettoneMenuItem({text: "PIPPO"});
-        button.connect("activate", (button, event)=> {
+        // TODO this should be a setting
+        let startingDirectory = Gio.File.new_for_path("/home/francesco/Universita");
+
+        this.build_dropdown_for_directory(startingDirectory, this.cassettoneBox);
+    }
+
+    build_dropdown_for_directory(directory, box) {
+        const iter = directory.enumerate_children('standard::*', Gio.FileQueryInfoFlags.NONE, null);
+
+        let dirs = [];
+        let nondirs = [];
+
+        var info = iter.next_file(null);
+        while (info != null) {
+            // TODO skip hidden files as a setting (there should be info.get_is_hidden(), check doc)
+            info.display_name = info.get_display_name();
+            info.content_type = info.get_content_type();
+            if (info.get_content_type() == "inode/directory") {
+                dirs.push(info);
+            }
+            else {
+                nondirs.push(info);
+            }
+            var info = iter.next_file(null);
+        }
+
+        dirs.sort((a,b) => strcmp_insensitive(a.display_name, b.display_name));
+        nondirs.sort((a,b) => strcmp_insensitive(a.display_name, b.display_name));
+
+        dirs.forEach(info => this.add_to_dropdown_from_gioinfo(info, box));
+        nondirs.forEach(info => this.add_to_dropdown_from_gioinfo(info, box));
+    }
+
+    add_to_dropdown_from_gioinfo(info, box) {
+        let button = new CassettoneMenuItem(info);
+        button.connect("activate", (button, event) => {
             Util.spawn(["nemo"]);
             this.menu.toggle();
         })
-        this.cassettoneBox.add_child(button.actor);
+        box.add_child(button.actor);
     }
 
     on_applet_clicked() {
         this.menu.toggle();
     }
 
+}
+
+function strcmp_insensitive(a, b) {
+    a = a.toLowerCase();
+    b = b.toLowerCase();
+    if (a < b) return -1;
+    if (a > b) return 1;
+    return 0;
 }
 
 function main(metadata, orientation, panel_height, instance_id) {
