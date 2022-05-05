@@ -1,6 +1,6 @@
 /**
  * Cinnamon applet that attempts to replicate the functionality of the "Directory Menu" plugin from Xfce.
- * Written fron scratch, not translating the code of said plugin, as the author's first experiment in Cinnamon development.
+ * Written fron scratch, not strictly translating the code of said plugin, as the author's first experiment in Cinnamon development.
  * 
  * "Cassettone" is Italian for "big drawer", and the nickname I used to give to the Directory Menu
  * since it had a drawer icon when I first saw it.
@@ -12,6 +12,7 @@
 
 const Applet = imports.ui.applet;
 const Util = imports.misc.util;
+const GLib = imports.gi.GLib;
 const Gtk = imports.gi.Gtk;
 const Gdk = imports.gi.Gdk;
 const Gio = imports.gi.Gio;
@@ -53,6 +54,26 @@ class CassettoneApplet extends Applet.IconApplet{
     }
 
     populate_menu_with_directory(menu, directory) {
+        // First, the two directory actions: Open Folder and Open In Terminal
+
+        let open_item = Gtk.ImageMenuItem.new_with_label("Open Folder");
+        let open_image = Gtk.Image.new_from_icon_name("folder", Gtk.IconSize.MENU);
+        open_item.set_image(open_image);
+        open_item.connect("activate", () => {
+            this.launch(directory.get_uri(), Gtk.get_current_event_time());
+        });
+        menu.append(open_item);
+
+        let term_item = Gtk.ImageMenuItem.new_with_label("Open in Terminal");
+        let term_image = Gtk.Image.new_from_icon_name("terminal", Gtk.IconSize.MENU);
+        term_item.set_image(term_image);
+        term_item.connect("activate", () => {
+            this.open_terminal_at_path(directory.get_path());
+        });
+        menu.append(term_item);
+
+        this.menu.append(Gtk.SeparatorMenuItem.new());
+
         const iter = directory.enumerate_children('standard::*', Gio.FileQueryInfoFlags.NONE, null);
 
         let dirs = [];
@@ -64,8 +85,9 @@ class CassettoneApplet extends Applet.IconApplet{
             info.display_name = info.get_display_name();
             info.content_type = info.get_content_type();
             info.file = directory.get_child_for_display_name(info.display_name);
+            info.is_directory = (info.get_content_type() == "inode/directory");
 
-            if (info.get_content_type() == "inode/directory") {
+            if (info.is_directory) {
                 dirs.push(info);
             }
             else {
@@ -104,6 +126,17 @@ class CassettoneApplet extends Applet.IconApplet{
         let launch_context = display.get_app_launch_context();
         launch_context.set_timestamp(timestamp);
         Gio.AppInfo.launch_default_for_uri_async(uri, launch_context, null, this.launch_callback);
+    }
+
+    // emulates how nemo handles opening in terminal (using the same flags as Util.spawn)
+    open_terminal_at_path(path) {
+        let gnome_terminal_preferences = Gio.Settings.new("org.cinnamon.desktop.default-applications.terminal");
+        let default_terminal = gnome_terminal_preferences.get_string("exec");
+        let argv = [default_terminal];
+        let spawn_flags = GLib.SpawnFlags.SEARCH_PATH
+                    | GLib.SpawnFlags.STDOUT_TO_DEV_NULL
+                    | GLib.SpawnFlags.STDERR_TO_DEV_NULL;
+        GLib.spawn_async(path, argv, null, spawn_flags, null);
     }
 
     launch_callback(source_object, result) {
