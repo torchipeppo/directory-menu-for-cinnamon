@@ -10,8 +10,30 @@
 
 const Applet = imports.ui.applet;
 const Util = imports.misc.util;
+const PopupMenu = imports.ui.popupMenu;
+const St = imports.gi.St;
+const Lang = imports.lang;
 const Gtk = imports.gi.Gtk;
+const Clutter = imports.gi.Clutter;
 const Gio = imports.gi.Gio;
+
+
+class CassettoneMenuItem extends PopupMenu.PopupBaseMenuItem {
+    constructor(info, params) {
+        super(params);
+        this.box = new St.BoxLayout({ style_class: 'popup-combobox-item', style: 'padding: 0px;' });
+        this.info = info;
+
+        let icon = St.TextureCache.get_default().load_gicon(null, Gio.content_type_get_icon(info.content_type), 24);
+
+        let display_text = info.display_name;
+        let label = new St.Label({ text: display_text, y_align: Clutter.ActorAlign.CENTER });
+        
+        this.box.add(icon);
+        this.box.add(label);
+        this.addActor(this.box);
+    }
+};
 
 
 class CassettoneApplet extends Applet.IconApplet{
@@ -22,15 +44,29 @@ class CassettoneApplet extends Applet.IconApplet{
         this.set_applet_icon_symbolic_name("folder-symbolic");
         this.set_applet_tooltip(_("Directory Menu"));
 
-        this.menu = Gtk.Menu.new();
+        this.menuManager = new PopupMenu.PopupMenuManager(this);
+        this.menu = new Applet.AppletPopupMenu(this, orientation);
+        this.menuManager.addMenu(this.menu);
+
+        this.mainContainer = new St.BoxLayout({ vertical: true });
+        this.menu.addActor(this.mainContainer);
+
+        this.cassettoneScrollBox = new St.ScrollView({ x_fill: true, y_fill: false, y_align: St.Align.START });
+        this.cassettoneScrollBox.set_auto_scrolling(true);
+        this.mainContainer.add(this.cassettoneScrollBox);
+
+        this.cassettoneBox = new St.BoxLayout({ vertical:true });
+        this.cassettoneScrollBox.add_actor(this.cassettoneBox);
+        this.cassettoneScrollBox.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC);
+        this.cassettoneScrollBox.add_style_class_name("vfade");
 
         // TODO this should be a setting
         let startingDirectory = Gio.File.new_for_path("/home/francesco/Universita");
 
-        this.populate_menu_with_directory(startingDirectory, this.menu);
+        this.build_dropdown_for_directory(startingDirectory, this.cassettoneBox);
     }
 
-    populate_menu_with_directory(directory, menu) {
+    build_dropdown_for_directory(directory, box) {
         const iter = directory.enumerate_children('standard::*', Gio.FileQueryInfoFlags.NONE, null);
 
         let dirs = [];
@@ -53,37 +89,23 @@ class CassettoneApplet extends Applet.IconApplet{
         dirs.sort((a,b) => strcmp_insensitive(a.display_name, b.display_name));
         nondirs.sort((a,b) => strcmp_insensitive(a.display_name, b.display_name));
 
-        dirs.forEach(info => this.add_to_menu_from_gioinfo(info, menu));
-        nondirs.forEach(info => this.add_to_menu_from_gioinfo(info, menu));
+        dirs.forEach(info => this.add_to_dropdown_from_gioinfo(info, box));
+        nondirs.forEach(info => this.add_to_dropdown_from_gioinfo(info, box));
     }
 
-    add_to_menu_from_gioinfo(info, menu) {
-        let display_text = info.display_name;
-        let icon = Gio.content_type_get_icon(info.content_type);
-        let image = Gtk.Image.new_from_gicon(icon, Gtk.IconSize.MENU);
-        let item = Gtk.ImageMenuItem.new_with_label(display_text);
-        item.set_image(image);
-        item.connect("activate", () => {
+    add_to_dropdown_from_gioinfo(info, box) {
+        let button = new CassettoneMenuItem(info);
+        button.connect("activate", (button, event) => {
             Util.spawn(["nemo"]);
-        });
-        menu.append(item);
+            this.menu.toggle();
+        })
+        box.add_child(button.actor);
     }
 
     on_applet_clicked() {
-        // gotta delay by a bit b/c the GTK menu will disappear on mouse release if the cursor sprite is not on the menu.
-        // 75 ms is the min for a mouse, 175 ms for a touchpad.
-        // TODO see if there's a GTK way to disable the release-disappearance for some time,
-        //      or make the delay a setting
-        sleep(175).then(()=>{
-            this.menu.show_all();
-            this.menu.popup(null, null, null, 0, Gtk.get_current_event_time());
-        })
+        this.menu.toggle();
     }
 
-}
-
-function sleep(ms) {
-    return new Promise(r => setTimeout(r, ms));
 }
 
 function strcmp_insensitive(a, b) {
