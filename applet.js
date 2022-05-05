@@ -6,11 +6,14 @@
  * since it had a drawer icon when I first saw it.
  * The applet is called by this codename in the code, instead of "Directory Menu" directly,
  * since a "Menu" is an already existing concept here, i.e. a dropwown menu object.
+ * 
+ * TODO might have to destroy/free all the GTK/GIO objects I instantiate
  */
 
 const Applet = imports.ui.applet;
 const Util = imports.misc.util;
 const Gtk = imports.gi.Gtk;
+const Gdk = imports.gi.Gdk;
 const Gio = imports.gi.Gio;
 
 
@@ -27,7 +30,7 @@ class CassettoneApplet extends Applet.IconApplet{
         // TODO this should be a setting
         let startingDirectory = Gio.File.new_for_path("/home/francesco/Universita");
 
-        this.populate_menu_with_directory(startingDirectory, this.menu);
+        this.populate_menu_with_directory(this.menu, startingDirectory);
 
 
 
@@ -49,7 +52,7 @@ class CassettoneApplet extends Applet.IconApplet{
         });
     }
 
-    populate_menu_with_directory(directory, menu) {
+    populate_menu_with_directory(menu, directory) {
         const iter = directory.enumerate_children('standard::*', Gio.FileQueryInfoFlags.NONE, null);
 
         let dirs = [];
@@ -60,32 +63,53 @@ class CassettoneApplet extends Applet.IconApplet{
             // TODO skip hidden files as a setting (there should be info.get_is_hidden(), check doc)
             info.display_name = info.get_display_name();
             info.content_type = info.get_content_type();
+            info.file = directory.get_child_for_display_name(info.display_name);
+
             if (info.get_content_type() == "inode/directory") {
                 dirs.push(info);
             }
             else {
                 nondirs.push(info);
             }
+
             var info = iter.next_file(null);
         }
 
         dirs.sort((a,b) => strcmp_insensitive(a.display_name, b.display_name));
         nondirs.sort((a,b) => strcmp_insensitive(a.display_name, b.display_name));
 
-        dirs.forEach(info => this.add_to_menu_from_gioinfo(info, menu));
-        nondirs.forEach(info => this.add_to_menu_from_gioinfo(info, menu));
+        dirs.forEach(info => this.add_to_menu_from_gioinfo(menu, info));
+        nondirs.forEach(info => this.add_to_menu_from_gioinfo(menu, info));
     }
 
-    add_to_menu_from_gioinfo(info, menu) {
+    add_to_menu_from_gioinfo(menu, info) {
         let display_text = info.display_name;
+
         let icon = Gio.content_type_get_icon(info.content_type);
         let image = Gtk.Image.new_from_gicon(icon, Gtk.IconSize.MENU);
+
+        let uri = info.file.get_uri();
+
         let item = Gtk.ImageMenuItem.new_with_label(display_text);
         item.set_image(image);
         item.connect("activate", () => {
-            Util.spawn(["nemo"]);
+            this.launch(uri, Gtk.get_current_event_time());
         });
         menu.append(item);
+    }
+
+    // essentially an independent JS translation of xapp_favorites_launch from the Favorites Xapp.
+    launch(uri, timestamp) {
+        let display = Gdk.Display.get_default();
+        let launch_context = display.get_app_launch_context();
+        launch_context.set_timestamp(timestamp);
+        Gio.AppInfo.launch_default_for_uri_async(uri, launch_context, null, this.launch_callback);
+    }
+
+    launch_callback(source_object, result) {
+        if (!Gio.AppInfo.launch_default_for_uri_finish(result)) {
+            log("An error has occurred while launching an item of the Directory Menu.")
+        }
     }
 
     on_applet_clicked() {
@@ -102,7 +126,7 @@ class CassettoneApplet extends Applet.IconApplet{
 }
 
 function sleep(ms) {
-    return new Promise(r => setTimeout(r, ms));
+    return new Promise(r => Util.setTimeout(r, ms));
 }
 
 function strcmp_insensitive(a, b) {
