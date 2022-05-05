@@ -28,6 +28,25 @@ class CassettoneApplet extends Applet.IconApplet{
         let startingDirectory = Gio.File.new_for_path("/home/francesco/Universita");
 
         this.populate_menu_with_directory(startingDirectory, this.menu);
+
+
+
+        // TEST
+        this.menu.append(Gtk.SeparatorMenuItem.new());
+        let subMenuItem = Gtk.ImageMenuItem.new_with_label("PIPPO");
+        let subMenu = Gtk.Menu.new();
+        subMenu.append(Gtk.ImageMenuItem.new_with_label("pippo"));
+        subMenu.append(Gtk.ImageMenuItem.new_with_label("pippopippo"));
+        subMenuItem.set_submenu(subMenu);
+        this.menu.append(subMenuItem);
+        subMenu.connect("show", () => {
+            subMenu.append(Gtk.ImageMenuItem.new_with_label("zan zan zan"));
+            subMenuItem.show_all();
+        });
+        subMenu.connect("hide", () => {
+            subMenu.append(Gtk.ImageMenuItem.new_with_label("..."));
+            subMenuItem.show_all();
+        });
     }
 
     populate_menu_with_directory(directory, menu) {
