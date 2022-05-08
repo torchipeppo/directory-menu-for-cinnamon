@@ -8,8 +8,6 @@
  * since a "Menu" is an already existing concept here, i.e. a dropwown menu object.
  * 
  * Note to self: can connect multiple callbacks to the same signal.
- * 
- * TODO might have to destroy/free all the GTK/GIO objects I instantiate
  */
 
 const Applet = imports.ui.applet;
@@ -31,7 +29,7 @@ class CassettoneApplet extends Applet.IconApplet{
         this.main_menu = Gtk.Menu.new();
 
         // TODO this should be a setting
-        this.startingDirectory = Gio.File.new_for_path("/home/francesco/Universita");
+        this.starting_path = "/home/francesco/Universita";
 
         // used to avoid prevent the menu from disappearing immediately,
         // since a GTK popup menu will disappear if the mouse is released while
@@ -52,7 +50,8 @@ class CassettoneApplet extends Applet.IconApplet{
         });
     }
 
-    populate_menu_with_directory(menu, directory) {
+    populate_menu_with_directory(menu, directory_path) {
+        const directory = Gio.File.new_for_path(directory_path);
         // First, the two directory actions: Open Folder and Open In Terminal
 
         let open_item = Gtk.ImageMenuItem.new_with_label("Open Folder");
@@ -110,12 +109,13 @@ class CassettoneApplet extends Applet.IconApplet{
         let image = Gtk.Image.new_from_gicon(icon, Gtk.IconSize.MENU);
 
         let uri = info.file.get_uri();
+        let path = info.file.get_path();
 
         let item = Gtk.ImageMenuItem.new_with_label(display_text);
         item.set_image(image);
 
         if (info.is_directory) {
-            let subMenu = this.create_subdirectory_submenu(info);
+            let subMenu = this.create_subdirectory_submenu(path);
             item.set_submenu(subMenu);
         }
         else {
@@ -126,11 +126,11 @@ class CassettoneApplet extends Applet.IconApplet{
         menu.append(item);
     }
 
-    create_subdirectory_submenu(info) {
+    create_subdirectory_submenu(path) {
         let subMenu = Gtk.Menu.new();
 
         subMenu.connect("show", () => {
-            this.populate_menu_with_directory(subMenu, info.file);
+            this.populate_menu_with_directory(subMenu, path);
             subMenu.show_all();
         });
 
@@ -185,7 +185,7 @@ class CassettoneApplet extends Applet.IconApplet{
         this.just_clicked = true;
         Util.setTimeout(()=>{this.just_clicked = false;}, 180);
 
-        this.populate_menu_with_directory(this.main_menu, this.startingDirectory);
+        this.populate_menu_with_directory(this.main_menu, this.starting_path);
         this.main_menu.show_all();
 
         this.main_menu.popup(null, null, null, 0, Gtk.get_current_event_time());
