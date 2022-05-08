@@ -36,20 +36,16 @@ class CassettoneApplet extends Applet.IconApplet{
 
 
         // TEST
-        this.menu.append(Gtk.SeparatorMenuItem.new());
-        let subMenuItem = Gtk.ImageMenuItem.new_with_label("PIPPO");
-        let subMenu = Gtk.Menu.new();
-        subMenu.append(Gtk.ImageMenuItem.new_with_label("pippo"));
-        subMenu.append(Gtk.ImageMenuItem.new_with_label("pippopippo"));
-        subMenuItem.set_submenu(subMenu);
-        this.menu.append(subMenuItem);
-        subMenu.connect("show", () => {
-            subMenu.append(Gtk.ImageMenuItem.new_with_label("zan zan zan"));
-            subMenuItem.show_all();
+        var lol_nope = true;
+        this.menu.connect("hide", () => {
+            if (lol_nope) {
+                lol_nope = false;
+                this.menu.popup(null, null, null, 0, Gtk.get_current_event_time());
+            }
         });
-        subMenu.connect("hide", () => {
-            subMenu.append(Gtk.ImageMenuItem.new_with_label("..."));
-            subMenuItem.show_all();
+        this.menu.connect("hide", () => {
+            this.menu.append(Gtk.ImageMenuItem.new_with_label("..."));
+            this.menu.show_all();
         });
     }
 
@@ -72,7 +68,7 @@ class CassettoneApplet extends Applet.IconApplet{
         });
         menu.append(term_item);
 
-        this.menu.append(Gtk.SeparatorMenuItem.new());
+        menu.append(Gtk.SeparatorMenuItem.new());
 
         const iter = directory.enumerate_children('standard::*', Gio.FileQueryInfoFlags.NONE, null);
 
@@ -114,10 +110,37 @@ class CassettoneApplet extends Applet.IconApplet{
 
         let item = Gtk.ImageMenuItem.new_with_label(display_text);
         item.set_image(image);
-        item.connect("activate", () => {
-            this.launch(uri, Gtk.get_current_event_time());
-        });
+
+        if (info.is_directory) {
+            let subMenu = this.create_subdirectory_submenu(info);
+            item.set_submenu(subMenu);
+        }
+        else {
+            item.connect("activate", () => {
+                this.launch(uri, Gtk.get_current_event_time());
+            });
+        }
         menu.append(item);
+    }
+
+    create_subdirectory_submenu(info) {
+        let subMenu = Gtk.Menu.new();
+
+        subMenu.connect("show", () => {
+            this.populate_menu_with_directory(subMenu, info.file);
+            subMenu.show_all();
+        });
+
+        subMenu.connect("hide", () => {
+            subMenu.foreach((subItem)=>{
+                // destroy at some future instant, but not right now so we have time for the activate event
+                GLib.idle_add(GLib.G_PRIORITY_HIGH_IDLE, ()=>{
+                    subItem.destroy();
+                });
+            });
+        });
+
+        return subMenu;
     }
 
     // essentially an independent JS translation of xapp_favorites_launch from the Favorites Xapp.
