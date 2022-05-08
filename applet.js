@@ -2,10 +2,12 @@
  * Cinnamon applet that attempts to replicate the functionality of the "Directory Menu" plugin from Xfce.
  * Written fron scratch, not strictly translating the code of said plugin, as the author's first experiment in Cinnamon development.
  * 
- * "Cassettone" is Italian for "big drawer", and the nickname I used to give to the Directory Menu
- * since it had a drawer icon when I first saw it.
+ * "Cassettone" is Italian for "big drawer (as in, the part of furniture, not a person who draws)",
+ * and the nickname I used to give the Directory Menu since it had a drawer icon when I first saw it.
  * The applet is called by this codename in the code, instead of "Directory Menu" directly,
  * since a "Menu" is an already existing concept here, i.e. a dropwown menu object.
+ * 
+ * Note to self: can connect multiple callbacks to the same signal.
  * 
  * TODO might have to destroy/free all the GTK/GIO objects I instantiate
  */
@@ -26,26 +28,27 @@ class CassettoneApplet extends Applet.IconApplet{
         this.set_applet_icon_symbolic_name("folder-symbolic");
         this.set_applet_tooltip(_("Directory Menu"));
 
-        this.menu = Gtk.Menu.new();
+        this.main_menu = Gtk.Menu.new();
 
         // TODO this should be a setting
-        let startingDirectory = Gio.File.new_for_path("/home/francesco/Universita");
+        this.startingDirectory = Gio.File.new_for_path("/home/francesco/Universita");
 
-        this.populate_menu_with_directory(this.menu, startingDirectory);
-
-
-
-        // TEST
-        var lol_nope = true;
-        this.menu.connect("hide", () => {
-            if (lol_nope) {
-                lol_nope = false;
-                this.menu.popup(null, null, null, 0, Gtk.get_current_event_time());
+        // used to avoid prevent the menu from disappearing immediately,
+        // since a GTK popup menu will disappear if the mouse is released while
+        // the cursor sprite is not over the menu
+        // (which can happen b/c the menu is forbidden from appearing
+        // on the panel)
+        this.just_clicked = false;
+        // so, if menu would be hidden when it was "just clicked",
+        // nevermind that and show it anyway
+        this.main_menu.connect("hide", () => {
+            if (this.just_clicked) {
+                this.just_clicked = false;
+                this.main_menu.popup(null, null, null, 0, Gtk.get_current_event_time());
             }
-        });
-        this.menu.connect("hide", () => {
-            this.menu.append(Gtk.ImageMenuItem.new_with_label("..."));
-            this.menu.show_all();
+            else {
+                this.destroy_all_children_later(this.main_menu);
+            }
         });
     }
 
@@ -132,12 +135,7 @@ class CassettoneApplet extends Applet.IconApplet{
         });
 
         subMenu.connect("hide", () => {
-            subMenu.foreach((subItem)=>{
-                // destroy at some future instant, but not right now so we have time for the activate event
-                GLib.idle_add(GLib.G_PRIORITY_HIGH_IDLE, ()=>{
-                    subItem.destroy();
-                });
-            });
+            this.destroy_all_children_later(subMenu);
         });
 
         return subMenu;
@@ -168,15 +166,29 @@ class CassettoneApplet extends Applet.IconApplet{
         }
     }
 
+    destroy_all_children_later(menu) {
+        menu.foreach((subItem)=>{
+            // destroy at some future instant, but not right now so we have time for the activate event
+            GLib.idle_add(GLib.G_PRIORITY_HIGH_IDLE, ()=>{
+                subItem.destroy();
+                return false;
+            });
+        });
+    }
+
     on_applet_clicked() {
-        // gotta delay by a bit b/c the GTK menu will disappear on mouse release if the cursor sprite is not on the menu.
-        // 75 ms is the min for a mouse, 175 ms for a touchpad.
-        // TODO see if there's a GTK way to disable the release-disappearance for some time,
-        //      or make the delay a setting
-        sleep(175).then(()=>{
-            this.menu.show_all();
-            this.menu.popup(null, null, null, 0, Gtk.get_current_event_time());
-        })
+        // the applet is considered "just clicked" for a short time in order
+        // to prevent instant disappearing (see constructor).
+        // in the author's empirical tests, 75 ms are fine for a mouse,
+        // 175 ms for a touchpad.
+        // TODO make timeout a setting
+        this.just_clicked = true;
+        Util.setTimeout(()=>{this.just_clicked = false;}, 180);
+
+        this.populate_menu_with_directory(this.main_menu, this.startingDirectory);
+        this.main_menu.show_all();
+
+        this.main_menu.popup(null, null, null, 0, Gtk.get_current_event_time());
     }
 
 }
