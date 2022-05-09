@@ -2,6 +2,9 @@
  * Cinnamon applet that attempts to replicate the functionality of the "Directory Menu" plugin from Xfce.
  * Written fron scratch, not strictly translating the code of said plugin, as the author's first experiment in Cinnamon development.
  * 
+ * Took major cues from: Xfce's Directory Menu, Cinnamon's Favorites applet, and Nemo.
+ * And of course te documentation for GLib/Gtk/Gdk/Gio.
+ * 
  * "Cassettone" is Italian for "big drawer (as in, the part of furniture, not a person who draws)",
  * and the nickname I used to give the Directory Menu since it had a drawer icon when I first saw it.
  * The applet is called by this codename in the code, instead of "Directory Menu" directly,
@@ -16,20 +19,26 @@ const GLib = imports.gi.GLib;
 const Gtk = imports.gi.Gtk;
 const Gdk = imports.gi.Gdk;
 const Gio = imports.gi.Gio;
+const Settings = imports.ui.settings;
+const UUID = "directory-menu@torchipeppo";
 
 
-class CassettoneApplet extends Applet.IconApplet{
+
+class CassettoneApplet extends Applet.IconApplet {
 
     constructor(orientation, panel_height, instance_id) {
         super(orientation, panel_height, instance_id);
+
+        this.settings = new Settings.AppletSettings(this, UUID, this.instance_id);
+        this.settings.bind("starting-uri", "starting_uri", this.normalize_tilde, this.starting_uri);
+        this.settings.bind("show-hidden", "show_hidden", null, null);
+        this.settings.bind("just-clicked-timeout", "justclicked_timeout", null, null);
+        this.starting_uri = this.normalize_tilde(this.starting_uri);
 
         this.set_applet_icon_symbolic_name("folder-symbolic");
         this.set_applet_tooltip(_("Directory Menu"));
 
         this.main_menu = Gtk.Menu.new();
-
-        // TODO this should be a setting
-        this.starting_path = "/home/francesco/Universita";
 
         // used to avoid prevent the menu from disappearing immediately,
         // since a GTK popup menu will disappear if the mouse is released while
@@ -50,8 +59,8 @@ class CassettoneApplet extends Applet.IconApplet{
         });
     }
 
-    populate_menu_with_directory(menu, directory_path) {
-        const directory = Gio.File.new_for_path(directory_path);
+    populate_menu_with_directory(menu, directory_uri) {
+        const directory = Gio.File.new_for_uri(directory_uri);
         // First, the two directory actions: Open Folder and Open In Terminal
 
         let open_item = Gtk.ImageMenuItem.new_with_label("Open Folder");
@@ -79,17 +88,18 @@ class CassettoneApplet extends Applet.IconApplet{
 
         var info = iter.next_file(null);
         while (info != null) {
-            // TODO skip hidden files as a setting (there should be info.get_is_hidden(), check doc)
-            info.display_name = info.get_display_name();
-            info.content_type = info.get_content_type();
-            info.file = directory.get_child_for_display_name(info.display_name);
-            info.is_directory = (info.get_content_type() == "inode/directory");
-
-            if (info.is_directory) {
-                dirs.push(info);
-            }
-            else {
-                nondirs.push(info);
+            if (!info.get_is_hidden() || this.show_hidden) {     // <-- skip hidden files
+                info.display_name = info.get_display_name();
+                info.content_type = info.get_content_type();
+                info.file = directory.get_child_for_display_name(info.display_name);
+                info.is_directory = (info.get_content_type() == "inode/directory");
+    
+                if (info.is_directory) {
+                    dirs.push(info);
+                }
+                else {
+                    nondirs.push(info);
+                }
             }
 
             var info = iter.next_file(null);
@@ -109,13 +119,12 @@ class CassettoneApplet extends Applet.IconApplet{
         let image = Gtk.Image.new_from_gicon(icon, Gtk.IconSize.MENU);
 
         let uri = info.file.get_uri();
-        let path = info.file.get_path();
 
         let item = Gtk.ImageMenuItem.new_with_label(display_text);
         item.set_image(image);
 
         if (info.is_directory) {
-            let subMenu = this.create_subdirectory_submenu(path);
+            let subMenu = this.create_subdirectory_submenu(uri);
             item.set_submenu(subMenu);
         }
         else {
@@ -126,11 +135,11 @@ class CassettoneApplet extends Applet.IconApplet{
         menu.append(item);
     }
 
-    create_subdirectory_submenu(path) {
+    create_subdirectory_submenu(uri) {
         let subMenu = Gtk.Menu.new();
 
         subMenu.connect("show", () => {
-            this.populate_menu_with_directory(subMenu, path);
+            this.populate_menu_with_directory(subMenu, uri);
             subMenu.show_all();
         });
 
@@ -176,16 +185,25 @@ class CassettoneApplet extends Applet.IconApplet{
         });
     }
 
+    normalize_tilde(path) {
+        if (path[0] == "~") {
+            path = "file://" + GLib.get_home_dir() + path.slice(1);
+        }
+        return path;
+    }
+
     on_applet_clicked() {
+        this.starting_uri = this.normalize_tilde(this.starting_uri);
+
         // the applet is considered "just clicked" for a short time in order
         // to prevent instant disappearing (see constructor).
         // in the author's empirical tests, 75 ms are fine for a mouse,
-        // 175 ms for a touchpad.
+        // 175~180 ms for a touchpad.
         // TODO make timeout a setting
         this.just_clicked = true;
-        Util.setTimeout(()=>{this.just_clicked = false;}, 180);
+        Util.setTimeout(()=>{this.just_clicked = false;}, this.justclicked_timeout);
 
-        this.populate_menu_with_directory(this.main_menu, this.starting_path);
+        this.populate_menu_with_directory(this.main_menu, this.starting_uri);
         this.main_menu.show_all();
 
         this.main_menu.popup(null, null, null, 0, Gtk.get_current_event_time());
@@ -193,9 +211,10 @@ class CassettoneApplet extends Applet.IconApplet{
 
 }
 
-function sleep(ms) {
-    return new Promise(r => Util.setTimeout(r, ms));
-}
+// now unused
+// function sleep(ms) {
+//     return new Promise(r => Util.setTimeout(r, ms));
+// }
 
 function strcmp_insensitive(a, b) {
     a = a.toLowerCase();
