@@ -3,14 +3,11 @@
  * Written fron scratch, not strictly translating the code of said plugin, as the author's first experiment in Cinnamon development.
  * 
  * Took major cues from: Xfce's Directory Menu, Cinnamon's Favorites applet, and Nemo.
- * And of course te documentation for GLib/Gtk/Gdk/Gio.
+ * And of course the documentation for GLib/Gtk/Gdk/Gio.
  * 
- * "Cassettone" is Italian for "big drawer (as in, the part of furniture, not a person who draws)",
- * and the nickname I used to give the Directory Menu since it had a drawer icon when I first saw it.
- * The applet is called by this codename in the code, instead of "Directory Menu" directly,
+ * "Cassettone" is the codename of this applet. (Italian for "large drawer".)
+ * I didn't want to call it directly "Directory Menu" in the code,
  * since a "Menu" is an already existing concept here, i.e. a dropwown menu object.
- * 
- * Note to self: can connect multiple callbacks to the same signal.
  */
 
 const Applet = imports.ui.applet;
@@ -40,7 +37,7 @@ class CassettoneApplet extends Applet.IconApplet {
 
         this.main_menu = Gtk.Menu.new();
 
-        // used to avoid prevent the menu from disappearing immediately,
+        // this prevents the menu from disappearing immediately,
         // since a GTK popup menu will disappear if the mouse is released while
         // the cursor sprite is not over the menu
         // (which can happen b/c the menu is forbidden from appearing
@@ -199,7 +196,6 @@ class CassettoneApplet extends Applet.IconApplet {
         // to prevent instant disappearing (see constructor).
         // in the author's empirical tests, 75 ms are fine for a mouse,
         // 175~180 ms for a touchpad.
-        // TODO make timeout a setting
         this.just_clicked = true;
         Util.setTimeout(()=>{this.just_clicked = false;}, this.justclicked_timeout);
 
