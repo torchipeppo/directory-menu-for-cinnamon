@@ -18,6 +18,8 @@ Download and extract the *content* of the `files` directory into `~/.local/share
 
 ## Compatibility
 
-Developed, tested and extensively used by the author on Cinnamon 5.0.5.
+Developed, tested and extensively used by the author on Cinnamon 5.0.7.
 
-May work on a few previous versions, but there is no guarantee. Should work on later versions as well, as long as they are still based on GTK 3.
+Also tested successfully on Cinnamon 5.2.
+
+Currently does **NOT** work on Cinnamon 5.4 and later (including 6.0).

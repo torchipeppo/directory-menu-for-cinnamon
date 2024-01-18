@@ -10,6 +10,7 @@
  * since a "Menu" is an already existing concept here, i.e. a dropwown menu object.
  */
 
+const Main = imports.ui.main;
 const Applet = imports.ui.applet;
 const Util = imports.misc.util;
 const GLib = imports.gi.GLib;
@@ -190,6 +191,14 @@ class CassettoneApplet extends Applet.IconApplet {
     }
 
     on_applet_clicked() {
+        if (global.menuStackLength) {
+            // If we attempt to open this GTK menu while a Cinnamon panel menu is open,
+            // Cinnamon will freeze.
+            // This can happen with the panel's context menu (but not an applet's).
+            // Returning is a simple fix, but it would be nicer (and riskier?) if it caused the open menu to close.
+            return;
+        }
+
         this.starting_uri = this.normalize_tilde(this.starting_uri);
 
         // the applet is considered "just clicked" for a short time in order
