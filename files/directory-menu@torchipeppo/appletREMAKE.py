@@ -2,7 +2,7 @@
  * Cinnamon applet that attempts to replicate the functionality of the "Directory Menu" plugin from Xfce.
  * Written fron scratch, not strictly translating the code of said plugin, as the author's first experiment in Cinnamon development.
  * 
- * Took major cues from: Xfce's Directory Menu, Cinnamon's Favorites applet, and Nemo.
+ * Took major cues from: Xfce's Directory Menu, Cinnamon's Favorites applet, the XApp Status Icons, and Nemo.
  * And of course the documentation for GLib/Gtk/Gdk/Gio.
  * 
  * "Cassettone" is the codename of this applet. (Italian for "large drawer".)
@@ -45,76 +45,78 @@ def populate_menu_with_directory(menu, directory_uri):
     open_item = Gtk.ImageMenuItem.new_with_label("Open Folder")
     open_image = Gtk.Image.new_from_icon_name("folder", Gtk.IconSize.MENU)
     open_item.set_image(open_image)
-    open_item.connect("activate", lambda: launch(directory.get_uri(), Gtk.get_current_event_time()))
+    open_item.connect("activate", lambda _: launch(directory.get_uri(), Gtk.get_current_event_time()))
     menu.append(open_item)
 
     term_item = Gtk.ImageMenuItem.new_with_label("Open in Terminal")
     term_image = Gtk.Image.new_from_icon_name("terminal", Gtk.IconSize.MENU)
     term_item.set_image(term_image)
-    term_item.connect("activate", lambda: open_terminal_at_path(directory.get_path()))
+    term_item.connect("activate", lambda _: open_terminal_at_path(directory.get_path()))
     menu.append(term_item)
 
     menu.append(Gtk.SeparatorMenuItem.new())
 
     # print(directory_uri)
 
-    # iter = directory.enumerate_children('standard::*', Gio.FileQueryInfoFlags.NONE, None)
+    iter = directory.enumerate_children('standard::*', Gio.FileQueryInfoFlags.NONE, None)
 
-    # dirs = []
-    # nondirs = []
+    dirs = []
+    nondirs = []
 
-    # info = iter.next_file(None)
-    # while info != None:
-    #     if (not info.get_is_hidden()):     # // <-- skip hidden files
-    #         info.display_name = info.get_display_name()
-    #         info.content_type = info.get_content_type()
-    #         info.file = directory.get_child_for_display_name(info.display_name)
-    #         info.is_directory = (info.get_content_type() == "inode/directory")
+    info = iter.next_file(None)
+    while info != None:
+        if (not info.get_is_hidden()):     # // <-- skip hidden files
+            info.display_name = info.get_display_name()
+            info.content_type = info.get_content_type()
+            info.file = directory.get_child_for_display_name(info.display_name)
+            info.is_directory = (info.get_content_type() == "inode/directory")
 
-    #         if (info.is_directory):
-    #             dirs.push(info)
-    #         else:
-    #             nondirs.push(info)
+            if (info.is_directory):
+                dirs.append(info)
+            else:
+                nondirs.append(info)
 
-    #     info = iter.next_file(None)
+        info = iter.next_file(None)
 
-    # dirs.sort(lambda a,b: strcmp_insensitive(a.display_name, b.display_name))
-    # nondirs.sort(lambda a,b: strcmp_insensitive(a.display_name, b.display_name))
+    dirs.sort(key = lambda info: info.display_name.lower())
+    nondirs.sort(key = lambda info: info.display_name.lower())
 
-    # dirs.forEach(lambda info: add_to_menu_from_gioinfo(menu, info))
-    # nondirs.forEach(lambda info: add_to_menu_from_gioinfo(menu, info))
+    for info in dirs:
+        add_to_menu_from_gioinfo(menu, info)
+    for info in nondirs:
+        add_to_menu_from_gioinfo(menu, info)
 
-# def add_to_menu_from_gioinfo(menu, info):
-#     display_text = info.display_name
+def add_to_menu_from_gioinfo(menu, info):
+    display_text = info.display_name
 
-#     icon = Gio.content_type_get_icon(info.content_type)
-#     image = Gtk.Image.new_from_gicon(icon, Gtk.IconSize.MENU)
+    icon = Gio.content_type_get_icon(info.content_type)
+    image = Gtk.Image.new_from_gicon(icon, Gtk.IconSize.MENU)
 
-#     uri = info.file.get_uri()
+    uri = info.file.get_uri()
 
-#     item = Gtk.ImageMenuItem.new_with_label(display_text)
-#     item.set_image(image)
+    item = Gtk.ImageMenuItem.new_with_label(display_text)
+    item.set_image(image)
 
-#     if info.is_directory:
-#         subMenu = create_subdirectory_submenu(uri)
-#         item.set_submenu(subMenu)
-#     else:
-#         item.connect("activate", lambda: launch(uri, Gtk.get_current_event_time()))
+    if info.is_directory:
+        subMenu = create_subdirectory_submenu(uri)
+        item.set_submenu(subMenu)
+    else:
+        item.connect("activate", lambda _: launch(uri, Gtk.get_current_event_time()))
 
-#     menu.append(item)
+    menu.append(item)
 
-# def create_subdirectory_submenu(uri):
-#     subMenu = Gtk.Menu.new()
+def create_subdirectory_submenu(uri):
+    subMenu = Gtk.Menu.new()
 
-#     def f():
-#         populate_menu_with_directory(subMenu, uri)
-#         subMenu.show_all()
+    def f(_):
+        populate_menu_with_directory(subMenu, uri)
+        subMenu.show_all()
 
-#     subMenu.connect("show", f)
+    subMenu.connect("show", f)
 
-#     subMenu.connect("hide", lambda: destroy_all_children_later(subMenu))
+    subMenu.connect("hide", lambda _: destroy_all_children_later(subMenu))
 
-#     return subMenu
+    return subMenu
 
 # // essentially an independent JS translation of xapp_favorites_launch from the Favorites Xapp.
 def launch(uri, timestamp):
@@ -144,7 +146,7 @@ def destroy_all_children_later(menu):
     def g1(subItem):
         def g2():
             subItem.destroy()
-            print("destroyed")
+            # print("destroyed")
             return False
         # // destroy at some future instant, but not right now so we have time for the activate event
         GLib.idle_add(priority=GLib.PRIORITY_HIGH_IDLE, function=g2)
@@ -200,7 +202,7 @@ main_menu.connect("hide", h)
 
 starting_uri = "file:///home/francesco"
 
-populate_menu_with_directory_2(main_menu, starting_uri)
+populate_menu_with_directory(main_menu, starting_uri)
 print("populated")
 main_menu.show_all()
 print("shown")
