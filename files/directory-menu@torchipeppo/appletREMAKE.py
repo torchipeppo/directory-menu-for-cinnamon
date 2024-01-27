@@ -14,39 +14,29 @@ KNOWN ISSUES
 - This applet's menu doesn't "lock up" the panel events (?) the way XApp Status Icons do (not yet, at least),
   so some counterintuitive but harmless behavior may be observed, such as the tooltip appearing beneath the menu,
   or an auto-hide panel disappearing while navigating the menu.
+
+- A warning will be recorded on .xsession-errors if the menu is dismissed without clicking anything,
+  because "no output" is not a valid json. This is harmless.
+
+- Gtk.ImageMenuItem.new_with_label is seemingly deprecated. This is harmless.
 """
 
 #!/usr/bin/python3
 
+import os
 import sys
 import json
-
-def log(message):
-    with open("/tmp/DM-remake-log.txt", "a") as f:
-        f.write(str(message) + "\n")
-    print(message, file=sys.stderr)
 
 import gi
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 gi.require_version("GLib", "2.0")
-gi.require_version('XApp', '1.0')
+from gi.repository import Gio, Gtk, Gdk, GLib
 
-import os
-import configparser
-from gi.repository import Gio, Gtk, Gdk, GLib, XApp
-
-UUID = 'directory-menu@torchipeppo'
-APP_NAME = "Directory Menu"
-APPLET_DIR = os.path.join(os.path.dirname(__file__))
-
-# const Applet = imports.ui.applet
-# const Util = imports.misc.util
-# const GLib = imports.gi.GLib
-# const Gtk = imports.gi.Gtk
-# const Gdk = imports.gi.Gdk
-# const Gio = imports.gi.Gio
-# const Settings = imports.ui.settings
+def log(message):
+    with open("/tmp/DM-remake-log.txt", "a") as f:
+        f.write(str(message) + "\n")
+    print(message, file=sys.stderr)
 
 
 
@@ -136,127 +126,32 @@ def create_subdirectory_submenu(uri):
 
     return subMenu
 
-# // essentially an independent JS translation of xapp_favorites_launch from the Favorites Xapp.
 def launch(uri, timestamp):
-    # display = Gdk.Display.get_default()
-    # launch_context = display.get_app_launch_context()
-    # launch_context.set_timestamp(timestamp)
-    # Gio.AppInfo.launch_default_for_uri(uri, launch_context)
     print(json.dumps({
         "action": "launch_default_for_uri",
         "uri": uri,
         "timestamp": timestamp,
     }))
-    log(f"Launch {uri}")
 
-# // emulates how nemo handles opening in terminal (using the same flags as Util.spawn)
 def open_terminal_at_path(path):
-    # gnome_terminal_preferences = Gio.Settings.new("org.cinnamon.desktop.default-applications.terminal")
-    # default_terminal = gnome_terminal_preferences.get_string("exec")
-    # argv = [default_terminal]
-    # spawn_flags = GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.STDOUT_TO_DEV_NULL | GLib.SpawnFlags.STDERR_TO_DEV_NULL
-    # GLib.spawn_async(path, argv, None, spawn_flags, None)
     print(json.dumps({
         "action": "open_terminal_at_path",
         "path": path,
     }))
-    log(f"Terminal at {path}")
 
-def launch_callback(source_object, result):
-    if not Gio.AppInfo.launch_default_for_uri_finish(result):
-        log("An error has occurred while launching an item of the Directory Menu.")
+def destroy_subitem_later(subItem):
+    def g2():
+        subItem.destroy()
+        return False
+    # // destroy at some future instant, but not right now so we have time for the activate event
+    GLib.idle_add(priority=GLib.PRIORITY_HIGH_IDLE, function=g2)
 
 def destroy_all_children_later(menu):
-
-    def g1(subItem):
-        def g2():
-            subItem.destroy()
-            # log("destroyed")
-            return False
-        # // destroy at some future instant, but not right now so we have time for the activate event
-        GLib.idle_add(priority=GLib.PRIORITY_HIGH_IDLE, function=g2)
-
-    menu.foreach(g1)
-
-def strcmp_insensitive(a, b):
-    a = a.lower()
-    b = b.lower()
-    if a < b: return -1
-    if a > b: return 1
-    return 0
+    menu.foreach(destroy_subitem_later)
 
 
-
-
-
-
-
-
-
-def populate_menu_with_directory_2(menu, directory_uri):
-    log(directory_uri)
-    directory = Gio.File.new_for_uri(directory_uri)
-    # // First, the two directory actions: Open Folder and Open In Terminal
-
-    temp_item = Gtk.MenuItem.new_with_label("Python Remake")
-    temp_item.set_sensitive(False)
-    menu.append(temp_item)
-
-    open_item = Gtk.MenuItem.new_with_label("Open Folder")
-    open_item.connect("activate", lambda _: launch(directory.get_uri(), Gtk.get_current_event_time()))
-    menu.append(open_item)
-
-    term_item = Gtk.MenuItem.new_with_label("Open in Terminal")
-    term_item.connect("activate", lambda _: open_terminal_at_path(directory.get_path()))
-    menu.append(term_item)
-
-    # menu.append(Gtk.SeparatorMenuItem.new())
-
-
-main_menu = Gtk.Menu.new()
-
-# // this prevents the menu from disappearing immediately,
-# // since a GTK popup menu will disappear if the mouse is released while
-# // the cursor sprite is not over the menu
-# // (which can happen b/c the menu is forbidden from appearing
-# // on the panel)
-# this.just_clicked = false
-# // so, if menu would be hidden when it was "just clicked",
-# // nevermind that and show it anyway
-def h(_):
-    destroy_all_children_later(main_menu)
-    Gtk.main_quit()
-
-main_menu.connect("hide", h)
-
-args = json.loads(sys.argv[1])
-starting_uri = args["starting_uri"]
-show_hidden = args["show_hidden"]
-
-populate_menu_with_directory(main_menu, starting_uri)
-log("populated")
-main_menu.show_all()
-log("shown")
-
-
-USE_JUST_POPUP = False
-
-if USE_JUST_POPUP:
-    # main_menu.popup(main_menu, None, None, None, 0, Gtk.get_current_event_time())
-    main_menu.popup(None, None, None, None, 1, Gtk.get_current_event_time())
-    log("done")
-
-else:
-    if not Gtk.Widget.get_realized(main_menu):
-        main_menu.realize()
-        toplevel = main_menu.get_toplevel()
-        context = toplevel.get_style_context()
-
-        context.remove_class("csd")
-        context.add_class("xapp-status-icon-menu-window")
-
-    # sintesi!
-
+# https://github.com/linuxmint/xapp/blob/master/libxapp/xapp-status-icon.c#L197
+def synthesize_event(args):
     display = Gdk.Display.get_default()
     seat = display.get_default_seat()
     pointer = seat.get_pointer()
@@ -313,28 +208,54 @@ else:
     # log(event.any)
     # log(event.button)
 
-    # sintesi fatta!
+    return event, window, win_rect, rect_anchor, menu_anchor
 
-    main_menu.rect_window = window   # invece di set_data, facciamo direttamente così nel binding Python
-    main_menu.window = window
-    main_menu.anchor_hints = Gdk.AnchorHints.SLIDE_X | Gdk.AnchorHints.SLIDE_Y | Gdk.AnchorHints.RESIZE_X | Gdk.AnchorHints.RESIZE_Y
 
-    main_menu.popup_at_rect(
-        window,
-        win_rect,
-        rect_anchor,
-        menu_anchor,
-        event
-    )
 
-    log("end")
 
-    # QUESTO POTREBBE ESSERE MOLTO MOLTO IMPORTANTE
-    Gtk.main()
-    # invece, per il posizionamento fatto bene, questo può essere utile:
-    # https://github.com/linuxmint/cinnamon/blob/master/files/usr/share/cinnamon/applets/xapp-status%40cinnamon.org/applet.js#L293
 
-    window.destroy()
-    event.free()
+main_menu = Gtk.Menu.new()
 
-    log("freed")
+def on_main_menu_hidden(_):
+    destroy_all_children_later(main_menu)
+    Gtk.main_quit()
+
+main_menu.connect("hide", on_main_menu_hidden)
+
+args = json.loads(sys.argv[1])
+starting_uri = args["starting_uri"]
+show_hidden = args["show_hidden"]
+
+populate_menu_with_directory(main_menu, starting_uri)
+
+main_menu.show_all()
+
+if not Gtk.Widget.get_realized(main_menu):
+    main_menu.realize()
+    toplevel = main_menu.get_toplevel()
+    context = toplevel.get_style_context()
+
+    context.remove_class("csd")
+    context.add_class("xapp-status-icon-menu-window")
+
+
+event, window, win_rect, rect_anchor, menu_anchor = synthesize_event(args)
+
+
+main_menu.rect_window = window   # invece di set_data, facciamo direttamente così nel binding Python
+main_menu.window = window
+main_menu.anchor_hints = Gdk.AnchorHints.SLIDE_X | Gdk.AnchorHints.SLIDE_Y | Gdk.AnchorHints.RESIZE_X | Gdk.AnchorHints.RESIZE_Y
+
+main_menu.popup_at_rect(
+    window,
+    win_rect,
+    rect_anchor,
+    menu_anchor,
+    event
+)
+
+Gtk.main()
+# this is a blocking call
+
+window.destroy()
+event.free()
