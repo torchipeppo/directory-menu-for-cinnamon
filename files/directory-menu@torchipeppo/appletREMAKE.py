@@ -14,13 +14,10 @@ KNOWN ISSUES
 - This applet's menu doesn't "lock up" the panel events (?) the way XApp Status Icons do (not yet, at least),
   so some counterintuitive but harmless behavior may be observed, such as the tooltip appearing beneath the menu,
   or an auto-hide panel disappearing while navigating the menu.
-
-- Gtk.ImageMenuItem.new_with_label is seemingly deprecated. This is harmless.
 """
 
 #!/usr/bin/python3
 
-import os
 import sys
 import json
 
@@ -40,23 +37,30 @@ def log(message):
 
 class Cassettone:
 
+    # https://lazka.github.io/pgi-docs/index.html#Gtk-3.0/classes/ImageMenuItem.html
+    def new_image_menu_item(self, label_text, icon):
+        box = Gtk.Box.new(Gtk.Orientation.HORIZONTAL, 6)
+        label = Gtk.Label.new(label_text)
+        menu_item = Gtk.MenuItem.new()
+
+        box.add(icon)
+        box.add(label)
+
+        menu_item.add(box)
+
+        return menu_item
+
     def populate_menu_with_directory(self, menu, directory_uri):
         directory = Gio.File.new_for_uri(directory_uri)
         # // First, the two directory actions: Open Folder and Open In Terminal
 
-        temp_item = Gtk.MenuItem.new_with_label("Python Remake")
-        temp_item.set_sensitive(False)
-        menu.append(temp_item)
-
-        open_item = Gtk.ImageMenuItem.new_with_label("Open Folder")
         open_image = Gtk.Image.new_from_icon_name("folder", Gtk.IconSize.MENU)
-        open_item.set_image(open_image)
+        open_item = self.new_image_menu_item("Open Folder", open_image)
         open_item.connect("activate", lambda _: self.launch(directory.get_uri(), Gtk.get_current_event_time()))
         menu.append(open_item)
 
-        term_item = Gtk.ImageMenuItem.new_with_label("Open in Terminal")
         term_image = Gtk.Image.new_from_icon_name("terminal", Gtk.IconSize.MENU)
-        term_item.set_image(term_image)
+        term_item = self.new_image_menu_item("Open in Terminal", term_image)
         term_item.connect("activate", lambda _: self.open_terminal_at_path(directory.get_path()))
         menu.append(term_item)
 
@@ -100,8 +104,7 @@ class Cassettone:
 
         uri = info.file.get_uri()
 
-        item = Gtk.ImageMenuItem.new_with_label(display_text)
-        item.set_image(image)
+        item = self.new_image_menu_item(display_text, image)
 
         if info.is_directory:
             subMenu = self.create_subdirectory_submenu(uri)
@@ -113,6 +116,7 @@ class Cassettone:
 
     def create_subdirectory_submenu(self, uri):
         subMenu = Gtk.Menu.new()
+        subMenu.set_reserve_toggle_size(False)
 
         def f(_):
             self.populate_menu_with_directory(subMenu, uri)
@@ -156,24 +160,24 @@ class Cassettone:
 
         if self.orientation == int(Gtk.PositionType.TOP):
             posx = self.x
-            posy = self.y - self.PRIV_ICON_SIZE;
-            rect_anchor = Gdk.Gravity.SOUTH_WEST;
-            menu_anchor = Gdk.Gravity.NORTH_WEST;
+            posy = self.y - self.PRIV_ICON_SIZE
+            rect_anchor = Gdk.Gravity.SOUTH_WEST
+            menu_anchor = Gdk.Gravity.NORTH_WEST
         elif self.orientation == int(Gtk.PositionType.LEFT):
-            posx = self.x - self.PRIV_ICON_SIZE;
+            posx = self.x - self.PRIV_ICON_SIZE
             posy = self.y
-            rect_anchor = Gdk.Gravity.NORTH_EAST;
-            menu_anchor = Gdk.Gravity.NORTH_WEST;
+            rect_anchor = Gdk.Gravity.NORTH_EAST
+            menu_anchor = Gdk.Gravity.NORTH_WEST
         elif self.orientation == int(Gtk.PositionType.RIGHT):
             posx = self.x
             posy = self.y
-            rect_anchor = Gdk.Gravity.NORTH_WEST;
-            menu_anchor = Gdk.Gravity.NORTH_EAST;
+            rect_anchor = Gdk.Gravity.NORTH_WEST
+            menu_anchor = Gdk.Gravity.NORTH_EAST
         else: # int(Gtk.PositionType.BOTTOM) is default
             posx = self.x
             posy = self.y
-            rect_anchor = Gdk.Gravity.NORTH_WEST;
-            menu_anchor = Gdk.Gravity.SOUTH_WEST;
+            rect_anchor = Gdk.Gravity.NORTH_WEST
+            menu_anchor = Gdk.Gravity.SOUTH_WEST
 
         attributes = Gdk.WindowAttr()
         attributes.window_type = Gdk.WindowType.CHILD
@@ -203,6 +207,7 @@ class Cassettone:
     def build_and_show(self, args):
 
         self.main_menu = Gtk.Menu.new()
+        self.main_menu.set_reserve_toggle_size(False)
 
         def on_main_menu_hidden(_):
             self.destroy_all_children_later(self.main_menu)
@@ -226,11 +231,11 @@ class Cassettone:
 
         if not Gtk.Widget.get_realized(self.main_menu):
             self.main_menu.realize()
-            toplevel = self.main_menu.get_toplevel()
-            context = toplevel.get_style_context()
+            # toplevel = self.main_menu.get_toplevel()
+            # context = toplevel.get_style_context()
 
-            context.remove_class("csd")
-            context.add_class("xapp-status-icon-menu-window")
+            # context.remove_class("csd")
+            # context.add_class("xapp-status-icon-menu-window")
 
 
         event, window, win_rect, rect_anchor, menu_anchor = self.synthesize_event()
