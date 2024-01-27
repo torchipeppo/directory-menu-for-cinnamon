@@ -1,8 +1,8 @@
 /**
- * Cinnamon applet that attempts to replicate the functionality of the "Directory Menu" plugin from Xfce.
- * Written fron scratch, not strictly translating the code of said plugin, as the author's first experiment in Cinnamon development.
+ * Cinnamon applet that replicates the functionality of the "Directory Menu" plugin from Xfce.
+ * Written from scratch, not strictly translating the code of said plugin, as the author's first experiment in Cinnamon development.
  * 
- * Took major cues from: Xfce's Directory Menu, Cinnamon's Favorites applet, and Nemo.
+ * Took major cues from: Xfce's Directory Menu, Cinnamon's Favorites applet, Mint's XApp status icons and the corresponding applet, and Nemo.
  * And of course the documentation for GLib/Gtk/Gdk/Gio.
  * 
  * "Cassettone" is the codename of this applet. (Italian for "large drawer".)
