@@ -199,27 +199,40 @@ class CassettoneApplet extends Applet.IconApplet {
             return;
         }
 
-        this.starting_uri = this.normalize_tilde(this.starting_uri);
+        // this.starting_uri = this.normalize_tilde(this.starting_uri);
 
-        // the applet is considered "just clicked" for a short time in order
-        // to prevent instant disappearing (see constructor).
-        // in the author's empirical tests, 75 ms are fine for a mouse,
-        // 175~180 ms for a touchpad.
-        this.just_clicked = true;
-        Util.setTimeout(()=>{this.just_clicked = false;}, this.justclicked_timeout);
+        // // the applet is considered "just clicked" for a short time in order
+        // // to prevent instant disappearing (see constructor).
+        // // in the author's empirical tests, 75 ms are fine for a mouse,
+        // // 175~180 ms for a touchpad.
+        // this.just_clicked = true;
+        // Util.setTimeout(()=>{this.just_clicked = false;}, this.justclicked_timeout);
 
-        this.populate_menu_with_directory(this.main_menu, this.starting_uri);
-        this.main_menu.show_all();
+        // this.populate_menu_with_directory(this.main_menu, this.starting_uri);
+        // this.main_menu.show_all();
 
-        this.main_menu.popup(null, null, null, 0, Gtk.get_current_event_time());
+        // this.main_menu.popup(null, null, null, 0, Gtk.get_current_event_time());
+
+        Util.spawn_async(
+            ['python3', `/home/francesco/Cinnamon Dev/directory-menu@torchipeppo/files/directory-menu@torchipeppo/appletREMAKE.py`],
+            (response) => {
+                response = JSON.parse(response);
+                if (response !== null) {
+                    if (response.action == "launch_default_for_uri") {
+                        this.launch(response.uri, response.timestamp);
+                    }
+                    else if (response.action == "open_terminal_at_path") {
+                        this.open_terminal_at_path(response.path);
+                    }
+                    else {
+                        log("Python-based menu returned unknown action " + response.action)
+                    }
+                }
+            }
+        );
     }
 
 }
-
-// now unused
-// function sleep(ms) {
-//     return new Promise(r => Util.setTimeout(r, ms));
-// }
 
 function strcmp_insensitive(a, b) {
     a = a.toLowerCase();

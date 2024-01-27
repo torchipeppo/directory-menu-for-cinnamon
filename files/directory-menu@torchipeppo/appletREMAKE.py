@@ -12,6 +12,14 @@
 
 #!/usr/bin/python3
 
+import sys
+import json
+
+def log(message):
+    with open("/tmp/DM-remake-log.txt", "a") as f:
+        f.write(str(message) + "\n")
+    print(message, file=sys.stderr)
+
 import gi
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
@@ -42,6 +50,10 @@ def populate_menu_with_directory(menu, directory_uri):
     directory = Gio.File.new_for_uri(directory_uri)
     # // First, the two directory actions: Open Folder and Open In Terminal
 
+    temp_item = Gtk.MenuItem.new_with_label("Python Remake")
+    temp_item.set_sensitive(False)
+    menu.append(temp_item)
+
     open_item = Gtk.ImageMenuItem.new_with_label("Open Folder")
     open_image = Gtk.Image.new_from_icon_name("folder", Gtk.IconSize.MENU)
     open_item.set_image(open_image)
@@ -56,7 +68,7 @@ def populate_menu_with_directory(menu, directory_uri):
 
     menu.append(Gtk.SeparatorMenuItem.new())
 
-    # print(directory_uri)
+    # log(directory_uri)
 
     iter = directory.enumerate_children('standard::*', Gio.FileQueryInfoFlags.NONE, None)
 
@@ -120,33 +132,40 @@ def create_subdirectory_submenu(uri):
 
 # // essentially an independent JS translation of xapp_favorites_launch from the Favorites Xapp.
 def launch(uri, timestamp):
-    # let display = Gdk.Display.get_default()
-    # let launch_context = display.get_app_launch_context()
+    # display = Gdk.Display.get_default()
+    # launch_context = display.get_app_launch_context()
     # launch_context.set_timestamp(timestamp)
-    # Gio.AppInfo.launch_default_for_uri_async(uri, launch_context, null, this.launch_callback)
-    print(f"Launch {uri}")
+    # Gio.AppInfo.launch_default_for_uri(uri, launch_context)
+    print(json.dumps({
+        "action": "launch_default_for_uri",
+        "uri": uri,
+        "timestamp": timestamp,
+    }))
+    log(f"Launch {uri}")
 
 # // emulates how nemo handles opening in terminal (using the same flags as Util.spawn)
 def open_terminal_at_path(path):
-    # let gnome_terminal_preferences = Gio.Settings.new("org.cinnamon.desktop.default-applications.terminal")
-    # let default_terminal = gnome_terminal_preferences.get_string("exec")
-    # let argv = [default_terminal]
-    # let spawn_flags = GLib.SpawnFlags.SEARCH_PATH
-    #             | GLib.SpawnFlags.STDOUT_TO_DEV_NULL
-    #             | GLib.SpawnFlags.STDERR_TO_DEV_NULL
-    # GLib.spawn_async(path, argv, null, spawn_flags, null)
-    print(f"Terminal at {path}")
+    # gnome_terminal_preferences = Gio.Settings.new("org.cinnamon.desktop.default-applications.terminal")
+    # default_terminal = gnome_terminal_preferences.get_string("exec")
+    # argv = [default_terminal]
+    # spawn_flags = GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.STDOUT_TO_DEV_NULL | GLib.SpawnFlags.STDERR_TO_DEV_NULL
+    # GLib.spawn_async(path, argv, None, spawn_flags, None)
+    print(json.dumps({
+        "action": "open_terminal_at_path",
+        "path": path,
+    }))
+    log(f"Terminal at {path}")
 
-# def launch_callback(source_object, result):
-#     if not Gio.AppInfo.launch_default_for_uri_finish(result):
-#         print("An error has occurred while launching an item of the Directory Menu.")
+def launch_callback(source_object, result):
+    if not Gio.AppInfo.launch_default_for_uri_finish(result):
+        log("An error has occurred while launching an item of the Directory Menu.")
 
 def destroy_all_children_later(menu):
 
     def g1(subItem):
         def g2():
             subItem.destroy()
-            # print("destroyed")
+            # log("destroyed")
             return False
         # // destroy at some future instant, but not right now so we have time for the activate event
         GLib.idle_add(priority=GLib.PRIORITY_HIGH_IDLE, function=g2)
@@ -169,9 +188,13 @@ def strcmp_insensitive(a, b):
 
 
 def populate_menu_with_directory_2(menu, directory_uri):
-    print(directory_uri)
+    log(directory_uri)
     directory = Gio.File.new_for_uri(directory_uri)
     # // First, the two directory actions: Open Folder and Open In Terminal
+
+    temp_item = Gtk.MenuItem.new_with_label("Python Remake")
+    temp_item.set_sensitive(False)
+    menu.append(temp_item)
 
     open_item = Gtk.MenuItem.new_with_label("Open Folder")
     open_item.connect("activate", lambda _: launch(directory.get_uri(), Gtk.get_current_event_time()))
@@ -203,9 +226,9 @@ main_menu.connect("hide", h)
 starting_uri = "file:///home/francesco"
 
 populate_menu_with_directory(main_menu, starting_uri)
-print("populated")
+log("populated")
 main_menu.show_all()
-print("shown")
+log("shown")
 
 
 USE_JUST_POPUP = False
@@ -213,7 +236,7 @@ USE_JUST_POPUP = False
 if USE_JUST_POPUP:
     # main_menu.popup(main_menu, None, None, None, 0, Gtk.get_current_event_time())
     main_menu.popup(None, None, None, None, 1, Gtk.get_current_event_time())
-    print("done")
+    log("done")
 
 else:
     if not Gtk.Widget.get_realized(main_menu):
@@ -253,9 +276,9 @@ else:
     event.any.window = window
     event.button.device = pointer
 
-    # print(event)
-    # print(event.any)
-    # print(event.button)
+    # log(event)
+    # log(event.any)
+    # log(event.button)
 
     # sintesi fatta!
 
@@ -271,7 +294,7 @@ else:
         event
     )
 
-    print("end")
+    log("end")
 
     # QUESTO POTREBBE ESSERE MOLTO MOLTO IMPORTANTE
     Gtk.main()
@@ -281,4 +304,4 @@ else:
     window.destroy()
     event.free()
 
-    print("freed")
+    log("freed")
