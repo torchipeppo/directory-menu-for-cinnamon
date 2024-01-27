@@ -8,6 +8,9 @@
  * "Cassettone" is the codename of this applet. (Italian for "large drawer".)
  * I didn't want to call it directly "Directory Menu" in the code,
  * since a "Menu" is an already existing concept here, i.e. a dropwown menu object.
+ * 
+ * TODO c'è qualcosa che permette a xappstatusapplet di "bloccare" gli eventi del pannello,
+ * inclusa la conseguenza di bloccarne la scomparsa
  */
 
 const Main = imports.ui.main;
@@ -17,6 +20,8 @@ const GLib = imports.gi.GLib;
 const Gtk = imports.gi.Gtk;
 const Gdk = imports.gi.Gdk;
 const Gio = imports.gi.Gio;
+const St = imports.gi.St;
+const Cinnamon = imports.gi.Cinnamon;
 const Settings = imports.ui.settings;
 const UUID = "directory-menu@torchipeppo";
 
@@ -24,8 +29,10 @@ const UUID = "directory-menu@torchipeppo";
 
 class CassettoneApplet extends Applet.IconApplet {
 
-    constructor(orientation, panel_height, instance_id) {
+    constructor(metadata, orientation, panel_height, instance_id) {
         super(orientation, panel_height, instance_id);
+
+        this.metadata = metadata;
 
         this.settings = new Settings.AppletSettings(this, UUID, this.instance_id);
         this.settings.bind("starting-uri", "starting_uri", this.normalize_tilde, this.starting_uri);
@@ -190,6 +197,44 @@ class CassettoneApplet extends Applet.IconApplet {
         return path;
     }
 
+    // straight from https://github.com/linuxmint/cinnamon/blob/master/files/usr/share/cinnamon/applets/xapp-status%40cinnamon.org/applet.js#L293
+    getEventPositionInfo() {
+        let allocation = Cinnamon.util_get_transformed_allocation(this.actor);
+
+        let x = Math.round(allocation.x1 / global.ui_scale);
+        let y = Math.round(allocation.y1 / global.ui_scale);
+        let w = Math.round((allocation.x2 - allocation.x1) / global.ui_scale)
+        let h = Math.round((allocation.y2 - allocation.y1) / global.ui_scale)
+
+        let final_x, final_y, final_o;
+
+        switch (this._orientation) {
+            case St.Side.TOP:
+                final_x = x;
+                final_y = y + h;
+                final_o = Gtk.PositionType.TOP;
+                break;
+            case St.Side.BOTTOM:
+            default:
+                final_x = x;
+                final_y = y;
+                final_o = Gtk.PositionType.BOTTOM;
+                break;
+            case St.Side.LEFT:
+                final_x = x + w;
+                final_y = y
+                final_o = Gtk.PositionType.LEFT;
+                break;
+            case St.Side.RIGHT:
+                final_x = x;
+                final_y = y;
+                final_o = Gtk.PositionType.RIGHT;
+                break;
+        }
+
+        return [final_x, final_y, final_o];
+    }
+
     on_applet_clicked() {
         if (global.menuStackLength) {
             // If we attempt to open this GTK menu while a Cinnamon panel menu is open,
@@ -199,7 +244,7 @@ class CassettoneApplet extends Applet.IconApplet {
             return;
         }
 
-        // this.starting_uri = this.normalize_tilde(this.starting_uri);
+        this.starting_uri = this.normalize_tilde(this.starting_uri);
 
         // // the applet is considered "just clicked" for a short time in order
         // // to prevent instant disappearing (see constructor).
@@ -213,11 +258,25 @@ class CassettoneApplet extends Applet.IconApplet {
 
         // this.main_menu.popup(null, null, null, 0, Gtk.get_current_event_time());
 
+
+        let [x,y,o] = this.getEventPositionInfo();
+
+        let args = {
+            "starting_uri": this.starting_uri,
+            "show_hidden": this.show_hidden,
+            "x": x,
+            "y": y,
+            "orientation": o,
+        }
+
         Util.spawn_async(
-            ['python3', `/home/francesco/Cinnamon Dev/directory-menu@torchipeppo/files/directory-menu@torchipeppo/appletREMAKE.py`],
+            ['python3', `${this.metadata.path}/appletREMAKE.py`, JSON.stringify(args)],
             (response) => {
                 response = JSON.parse(response);
                 if (response !== null) {
+                    if (response.action == "") {
+                        ; // silent nop
+                    }
                     if (response.action == "launch_default_for_uri") {
                         this.launch(response.uri, response.timestamp);
                     }
@@ -243,6 +302,6 @@ function strcmp_insensitive(a, b) {
 }
 
 function main(metadata, orientation, panel_height, instance_id) {
-    return new CassettoneApplet(orientation, panel_height, instance_id);
+    return new CassettoneApplet(metadata, orientation, panel_height, instance_id);
 }
 

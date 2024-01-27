@@ -1,14 +1,20 @@
-"""/**
- * Cinnamon applet that attempts to replicate the functionality of the "Directory Menu" plugin from Xfce.
- * Written fron scratch, not strictly translating the code of said plugin, as the author's first experiment in Cinnamon development.
- * 
- * Took major cues from: Xfce's Directory Menu, Cinnamon's Favorites applet, the XApp Status Icons, and Nemo.
- * And of course the documentation for GLib/Gtk/Gdk/Gio.
- * 
- * "Cassettone" is the codename of this applet. (Italian for "large drawer".)
- * I didn't want to call it directly "Directory Menu" in the code,
- * since a "Menu" is an already existing concept here, i.e. a dropwown menu object.
- */"""
+"""
+KNOWN ISSUES
+
+- The menu only appears if the mouse button is clicked and released
+  within a short, but undetermined, fraction of a second.
+  A slower click will cause this script to be executed correctly,
+  but then hang up on Gtk.main without showing the menu, and without terminating.
+  (This didn't happen in the GJS-only version, but then again, that version does nothing on Cinnamon 5.4+)
+
+- Doesn't work by clicking with a touchpad. At least, not on the author's laptop.
+  This is because clicking with a touchpad delays the press and release signals (may depend on laptop manufacturer),
+  therefore resulting in the above known issue (including spawning a process that won't terminate)
+
+- This applet's menu doesn't "lock up" the panel events (?) the way XApp Status Icons do (not yet, at least),
+  so some counterintuitive but harmless behavior may be observed, such as the tooltip appearing beneath the menu,
+  or an auto-hide panel disappearing while navigating the menu.
+"""
 
 #!/usr/bin/python3
 
@@ -77,7 +83,7 @@ def populate_menu_with_directory(menu, directory_uri):
 
     info = iter.next_file(None)
     while info != None:
-        if (not info.get_is_hidden()):     # // <-- skip hidden files
+        if (not info.get_is_hidden() or show_hidden):     # // <-- skip hidden files
             info.display_name = info.get_display_name()
             info.content_type = info.get_content_type()
             info.file = directory.get_child_for_display_name(info.display_name)
@@ -223,7 +229,9 @@ def h(_):
 
 main_menu.connect("hide", h)
 
-starting_uri = "file:///home/francesco"
+args = json.loads(sys.argv[1])
+starting_uri = args["starting_uri"]
+show_hidden = args["show_hidden"]
 
 populate_menu_with_directory(main_menu, starting_uri)
 log("populated")
@@ -253,14 +261,39 @@ else:
     seat = display.get_default_seat()
     pointer = seat.get_pointer()
 
-    screen, posx, posy = pointer.get_position()
+    # https://github.com/linuxmint/xapp/blob/master/libxapp/xapp-status-icon.c#L222
+    # would be nice to determine it somehow, but it might not be so important right now
+    PRIV_ICON_SIZE = 16
+
+    # screen, posx, posy = pointer.get_position()
+    # posx, posy = args["x"], args["y"]
+    if args["orientation"] == int(Gtk.PositionType.TOP):
+        posx = args["x"]
+        posy = args["y"] - PRIV_ICON_SIZE;
+        rect_anchor = Gdk.Gravity.SOUTH_WEST;
+        menu_anchor = Gdk.Gravity.NORTH_WEST;
+    elif args["orientation"] == int(Gtk.PositionType.LEFT):
+        posx = args["x"] - PRIV_ICON_SIZE;
+        posy = args["y"]
+        rect_anchor = Gdk.Gravity.NORTH_EAST;
+        menu_anchor = Gdk.Gravity.NORTH_WEST;
+    elif args["orientation"] == int(Gtk.PositionType.RIGHT):
+        posx = args["x"]
+        posy = args["y"]
+        rect_anchor = Gdk.Gravity.NORTH_WEST;
+        menu_anchor = Gdk.Gravity.NORTH_EAST;
+    else: # int(Gtk.PositionType.BOTTOM) is default
+        posx = args["x"]
+        posy = args["y"]
+        rect_anchor = Gdk.Gravity.NORTH_WEST;
+        menu_anchor = Gdk.Gravity.SOUTH_WEST;
 
     attributes = Gdk.WindowAttr()
     attributes.window_type = Gdk.WindowType.CHILD
     attributes.x = posx
     attributes.y = posy
-    attributes.width = 16
-    attributes.height = 16
+    attributes.width = PRIV_ICON_SIZE
+    attributes.height = PRIV_ICON_SIZE
 
     attributes_mask = Gdk.WindowAttributesType.X | Gdk.WindowAttributesType.Y
 
@@ -269,8 +302,8 @@ else:
     win_rect = Gdk.Rectangle()
     win_rect.x = 0
     win_rect.y = 0
-    win_rect.width = 16
-    win_rect.height = 16
+    win_rect.width = PRIV_ICON_SIZE
+    win_rect.height = PRIV_ICON_SIZE
 
     event = Gdk.Event.new(Gdk.EventType.BUTTON_PRESS)
     event.any.window = window
@@ -289,8 +322,8 @@ else:
     main_menu.popup_at_rect(
         window,
         win_rect,
-        Gdk.Gravity.NORTH_WEST,
-        Gdk.Gravity.SOUTH_WEST,
+        rect_anchor,
+        menu_anchor,
         event
     )
 
