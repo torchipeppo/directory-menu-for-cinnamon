@@ -7,12 +7,10 @@
  * 
  * "Cassettone" is the codename of this applet. (Italian for "large drawer".)
  * I didn't want to call it directly "Directory Menu" in the code,
- * since a "Menu" is an already existing concept here, i.e. a dropwown menu object.
- * 
- * TODO c'è qualcosa che permette a xappstatusapplet di "bloccare" gli eventi del pannello,
- * inclusa la conseguenza di bloccarne la scomparsa
+ * since a "Menu" is an already existing concept here, i.e. a dropdown menu object.
  */
 
+const Lang = imports.lang;
 const Main = imports.ui.main;
 const Applet = imports.ui.applet;
 const Util = imports.misc.util;
@@ -42,6 +40,9 @@ class CassettoneApplet extends Applet.IconApplet {
 
         this.set_applet_icon_symbolic_name("folder-symbolic");
         this.set_applet_tooltip(_("Directory Menu"));
+
+        this.actor.connect('enter-event', Lang.bind(this, this.on_enter_event));
+        this.actor.connect('button-release-event', Lang.bind(this, this.on_button_release_event));
     }
 
     // essentially an independent JS translation of xapp_favorites_launch from the Favorites Xapp.
@@ -114,17 +115,44 @@ class CassettoneApplet extends Applet.IconApplet {
         return [final_x, final_y, final_o];
     }
 
-    on_applet_clicked() {
+    on_enter_event(actor, event) {
+        this._applet_tooltip.preventShow = false;
+    }
+
+    on_button_release_event(actor, event) {
+        let button = event.get_button();
+
         if (global.menuStackLength) {
             // If we attempt to open this GTK menu while a Cinnamon panel menu is open,
             // Cinnamon will freeze.
             // This can happen with the panel's context menu (but not an applet's).
             // Returning is a simple fix, but it would be nicer (and riskier?) if it caused the open menu to close.
-            return;
+            return false;
         }
 
-        this.starting_uri = this.normalize_tilde(this.starting_uri);
+        // this is only for left button release, but it's not like that's a fail condition
+        if (button !== 1) {
+            return true;
+        }
 
+        // start of Cinnamon wrappings
+        // https://github.com/linuxmint/cinnamon/blob/master/js/ui/applet.js#L267
+        if (!this._applet_enabled) {
+            return false;
+        }
+        if (!this._draggable.inhibit) {
+            return false;
+        } else {
+            if (this._applet_context_menu.isOpen) {
+                this._applet_context_menu.toggle();
+            }
+        }
+        // end of Cinnamon wrappings
+
+        this._applet_tooltip.hide();
+        this._applet_tooltip.preventShow = true;
+
+        this.starting_uri = this.normalize_tilde(this.starting_uri);
 
         let [x,y,o] = this.getEventPositionInfo();
 
@@ -155,6 +183,8 @@ class CassettoneApplet extends Applet.IconApplet {
                 }
             }
         );
+
+        return true;
     }
 
 }

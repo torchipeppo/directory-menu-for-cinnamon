@@ -1,19 +1,21 @@
 """
 KNOWN ISSUES
 
-- The menu only appears if the mouse button is clicked and released
-  within a short, but undetermined, fraction of a second.
-  A slower click will cause this script to be executed correctly,
-  but then hang up on Gtk.main without showing the menu, and without terminating.
-  (This didn't happen in the GJS-only version, but then again, that version does nothing on Cinnamon 5.4+)
+- This version is not as fast to load as the GJS-only version.
+  I have no quantitative data, but since the code is essentially the same,
+  I'd say that the extra delay is due exclusively to starting a new Python process.
+  Especially because submenus load as fast as always.
 
-- Doesn't work by clicking with a touchpad. At least, not on the author's laptop.
-  This is because clicking with a touchpad delays the press and release signals (may depend on laptop manufacturer),
-  therefore resulting in the above known issue (including spawning a process that won't terminate)
+- This script is triggered on mouse release. If you double-click on the applet, the mouse will have been released twice.
+  The second trigger will still work as expected, but the first release event will trigger a process that never terminates,
+  because it seems that popup_at_rect never shows he menu if the mouse is held at the time it's called.
+  So, just don't double-click on the applet. None of the built-in ones requires double-clicking, after all.
 
-- This applet's menu doesn't "lock up" the panel events (?) the way XApp Status Icons do (not yet, at least),
-  so some counterintuitive but harmless behavior may be observed, such as the tooltip appearing beneath the menu,
-  or an auto-hide panel disappearing while navigating the menu.
+- If this applet is on a panel set to automatically hide, the panel will hide as soon as any submenu opens.
+  This is otherwise completely harmless.
+  I don't think there is an easy solution here; attempting to "grab" the same way Cinnamon's PopupMenuManager does
+  just ends up freezing the whole desktop environment.
+  And even the XApp Status Icons have the same issue (I tried the client for Zoom, the video conference app, which puts a status icon there).
 """
 
 #!/usr/bin/python3
@@ -196,7 +198,7 @@ class Cassettone:
         win_rect.width = self.PRIV_ICON_SIZE
         win_rect.height = self.PRIV_ICON_SIZE
 
-        event = Gdk.Event.new(Gdk.EventType.BUTTON_PRESS)
+        event = Gdk.Event.new(Gdk.EventType.BUTTON_RELEASE)
         event.any.window = window
         event.button.device = pointer
 
