@@ -139,19 +139,18 @@ class CassettoneApplet extends Applet.IconApplet {
         Util.spawn_async(
             ['python3', `${this.metadata.path}/appletREMAKE.py`, JSON.stringify(args)],
             (response) => {
-                response = JSON.parse(response);
-                if (response !== null) {
-                    if (response.action == "") {
-                        ; // silent nop
-                    }
-                    else if (response.action == "launch_default_for_uri") {
-                        this.launch(response.uri, response.timestamp);
-                    }
-                    else if (response.action == "open_terminal_at_path") {
-                        this.open_terminal_at_path(response.path);
-                    }
-                    else {
-                        log("Python-based menu returned unknown action " + response.action)
+                if (response) {  // empty response signifies no action
+                    response = JSON.parse(response);
+                    if (response !== null) {
+                        if (response.action == "launch_default_for_uri") {
+                            this.launch(response.uri, response.timestamp);
+                        }
+                        else if (response.action == "open_terminal_at_path") {
+                            this.open_terminal_at_path(response.path);
+                        }
+                        else {
+                            log("Python-based menu returned unknown action " + response.action)
+                        }
                     }
                 }
             }
