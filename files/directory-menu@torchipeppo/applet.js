@@ -165,7 +165,7 @@ class CassettoneApplet extends Applet.IconApplet {
         }
 
         Util.spawn_async(
-            ['python3', `${this.metadata.path}/appletREMAKE.py`, JSON.stringify(args)],
+            ['python3', `${this.metadata.path}/popup_menu.py`, JSON.stringify(args)],
             (response) => {
                 if (response) {  // empty response signifies no action
                     response = JSON.parse(response);
