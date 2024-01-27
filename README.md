@@ -22,4 +22,5 @@ Developed, tested and extensively used by the author on Cinnamon 5.0.7.
 
 Also tested successfully on Cinnamon 5.2.
 
-Currently does **NOT** work on Cinnamon 5.4 and later (including 6.0).
+As of applet version 0.2, it should work on Cinnamon 6.0 (and presumably previous) as well.
+At least, it does on the author's VM. Further tests are pending.
