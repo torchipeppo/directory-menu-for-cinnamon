@@ -35,7 +35,6 @@ class CassettoneApplet extends Applet.IconApplet {
         this.settings = new Settings.AppletSettings(this, UUID, this.instance_id);
         this.settings.bind("starting-uri", "starting_uri", this.normalize_tilde, this.starting_uri);
         this.settings.bind("show-hidden", "show_hidden", null, null);
-        this.settings.bind("just-clicked-timeout", "justclicked_timeout", null, null);    // TODO remove
         this.starting_uri = this.normalize_tilde(this.starting_uri);
 
         this.set_applet_icon_symbolic_name("folder-symbolic");
