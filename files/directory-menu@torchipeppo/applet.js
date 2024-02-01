@@ -35,10 +35,12 @@ class CassettoneApplet extends Applet.IconApplet {
         this.settings = new Settings.AppletSettings(this, UUID, this.instance_id);
         this.settings.bind("starting-uri", "starting_uri", this.normalize_tilde, this.starting_uri);
         this.settings.bind("show-hidden", "show_hidden", null, null);
+        this.settings.bind("icon-name", "icon_name", this.set_applet_icon_symbolic_name, null);
+        this.settings.bind("tooltip", "tooltip_text", (newtext) => {this.set_applet_tooltip(_(newtext))}, null);
         this.starting_uri = this.normalize_tilde(this.starting_uri);
 
-        this.set_applet_icon_symbolic_name("folder-symbolic");
-        this.set_applet_tooltip(_("Directory Menu"));
+        this.set_applet_icon_symbolic_name(this.icon_name);
+        this.set_applet_tooltip(_(this.tooltip_text));
 
         this.actor.connect('enter-event', Lang.bind(this, this.on_enter_event));
         this.actor.connect('button-release-event', Lang.bind(this, this.on_button_release_event));

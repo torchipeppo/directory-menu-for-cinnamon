@@ -8,7 +8,7 @@ KNOWN ISSUES
 
 - This script is triggered on mouse release. If you double-click on the applet, the mouse will have been released twice.
   The second trigger will still work as expected, but the first release event will trigger a process that never terminates,
-  because it seems that popup_at_rect never shows he menu if the mouse is held at the time it's called.
+  because it seems that popup_at_rect never shows the menu if the mouse is held at the time it's called.
   So, just don't double-click on the applet. None of the built-in ones requires double-clicking, after all.
 
 - If this applet is on a panel set to automatically hide, the panel will hide as soon as any submenu opens.
