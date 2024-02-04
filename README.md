@@ -14,7 +14,7 @@ This is a re-creation of a built-in feature in XFCE.
 
 ## Installation
 
-Download and extract the *content* of the `files` directory into `~/.local/share/cinnamon/applets/`
+Download or clone this repo, then put the `directory-menu@torchipeppo` directory (contained in the `files` directory) into `~/.local/share/cinnamon/applets/`
 
 ## Compatibility
 
@@ -22,4 +22,5 @@ Developed, tested and extensively used by the author on Cinnamon 5.0.7.
 
 Also tested successfully on Cinnamon 5.2.
 
-Currently does **NOT** work on Cinnamon 5.4 and later (including 6.0).
+As of applet version 0.2, it should work on Cinnamon 6.0 (and previous) as well.
+At least, it does on the author's VMs. Further tests are pending.
