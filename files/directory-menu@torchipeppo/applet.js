@@ -193,4 +193,3 @@ class CassettoneApplet extends Applet.IconApplet {
 function main(metadata, orientation, panel_height, instance_id) {
     return new CassettoneApplet(metadata, orientation, panel_height, instance_id);
 }
-
