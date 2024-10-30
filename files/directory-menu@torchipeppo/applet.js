@@ -23,7 +23,7 @@ const Cinnamon = imports.gi.Cinnamon;
 const Settings = imports.ui.settings;
 const Gettext = imports.gettext;
 
-const UUID = "directory-menu@torchipeppo";
+const UUID = "directory-menu-DEV@torchipeppo-DEV";
 
 Gettext.bindtextdomain(UUID, GLib.get_home_dir() + "/.local/share/locale");
 

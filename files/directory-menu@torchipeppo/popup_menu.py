@@ -16,6 +16,9 @@ KNOWN ISSUES
   I don't think there is an easy solution here; attempting to "grab" the same way Cinnamon's PopupMenuManager does
   just ends up freezing the whole desktop environment.
   And even the XApp Status Icons have the same issue (I tried the client for Zoom, the video conference app, which puts a status icon there).
+
+TODO
+https://github.com/linuxmint/cinnamon-spices-applets/issues/5672
 """
 
 #!/usr/bin/python3
@@ -35,7 +38,7 @@ gi.require_version("XApp", "1.0")
 from gi.repository import Gio, Gtk, Gdk, GLib, XApp
 
 import gettext
-UUID = "directory-menu@torchipeppo"
+UUID = "directory-menu-DEV@torchipeppo-DEV"
 HOME = os.path.expanduser("~")
 gettext.bindtextdomain(UUID, os.path.join(HOME, ".local/share/locale"))
 gettext.textdomain(UUID)
@@ -118,12 +121,12 @@ class Cassettone:
                 priority_bins[priority].append(info)
 
             info = dir_iter.next_file(None)
-
+        
         for priority in sorted(priority_bins.keys()):
             lst = priority_bins[priority]
             lst.sort(key = lambda info: info.display_name.lower())
             for info in lst:
-            self.add_to_menu_from_gioinfo(menu, info)
+                self.add_to_menu_from_gioinfo(menu, info)
 
     def add_to_menu_from_gioinfo(self, menu, info):
         display_text = info.display_name
