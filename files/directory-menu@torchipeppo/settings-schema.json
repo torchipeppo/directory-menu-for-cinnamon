@@ -36,6 +36,15 @@
         "default": false,
         "description": "Include hidden files"
     },
+    "order-by": {
+        "type": "combobox",
+        "default": 0,
+        "options": {
+            "Name": 0,
+            "Date modified": 1
+        },
+        "description": "Order by..."
+    },
     "favorites-first": {
         "type": "switch",
         "default": false,

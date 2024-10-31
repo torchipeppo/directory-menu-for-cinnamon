@@ -58,6 +58,20 @@ def log(message):
     print(message, file=sys.stderr)
 
 
+def modification_sort_key(info):
+    try:
+        return -info.get_modification_date_time().to_unix()
+    except AttributeError:  # in case info.get_modification_date_time() is None
+        log(f"Unknown last edit time: {info.display_name}")
+        return 0
+
+# MEMO keep these in line with settings-scheme.json !!
+SORT_KEYS = [
+    # sort by name
+    lambda info: info.display_name.lower(),
+    # sort by date modified
+    modification_sort_key,
+]
 
 
 class Cassettone:
@@ -94,7 +108,7 @@ class Cassettone:
         # log(directory_uri)
 
         dir_iter = directory.enumerate_children(
-            'standard::*,metadata::pinned-to-top',
+            'standard::*,metadata::pinned-to-top,time::modified,time::modified-usec',
             Gio.FileQueryInfoFlags.NONE,
             None
         )
@@ -121,10 +135,10 @@ class Cassettone:
                 priority_bins[priority].append(info)
 
             info = dir_iter.next_file(None)
-        
+
         for priority in sorted(priority_bins.keys()):
             lst = priority_bins[priority]
-            lst.sort(key = lambda info: info.display_name.lower())
+            lst.sort(key = SORT_KEYS[self.order_by])
             for info in lst:
                 self.add_to_menu_from_gioinfo(menu, info)
 
@@ -262,6 +276,7 @@ class Cassettone:
         self.character_limit = args["character_limit"]
         self.favorites_first = args["favorites_first"]
         self.pinned_first = args["pinned_first"]
+        self.order_by = args["order_by"]
 
         self.favorites = XApp.Favorites.get_default()
 
