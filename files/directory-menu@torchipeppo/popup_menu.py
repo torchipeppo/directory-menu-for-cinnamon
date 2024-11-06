@@ -16,9 +16,6 @@ KNOWN ISSUES
   I don't think there is an easy solution here; attempting to "grab" the same way Cinnamon's PopupMenuManager does
   just ends up freezing the whole desktop environment.
   And even the XApp Status Icons have the same issue (I tried the client for Zoom, the video conference app, which puts a status icon there).
-
-TODO
-https://github.com/linuxmint/cinnamon-spices-applets/issues/5672
 """
 
 #!/usr/bin/python3
