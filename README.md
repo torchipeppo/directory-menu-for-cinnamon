@@ -19,7 +19,7 @@ But nowadays, **it's much more likely that this repo is out of date with respect
 * Fast navigation: just hover on a directory to open it
 * Open any file by clicking on it
 * "Open in Terminal" button for directories
-* Configurable settings for handling hidden files, limiting menu width, and customization
+* Configurable settings for sorting, handling hidden files, limiting menu width, and customization
 
 ## Installation
 
@@ -27,8 +27,8 @@ Download or clone this repo, then put the `directory-menu@torchipeppo` directory
 
 ## Compatibility
 
-Developed, tested and extensively used by the author on Cinnamon 5.0.7.
+Developed, tested and extensively used by the author on Cinnamon 5.0.7 and Cinnamon 6.0.
 
-Also tested successfully on Cinnamon 5.2 and Cinnamon 6.0.
+Also tested successfully on Cinnamon 5.2.
 
-May work on some previous versions, but it's untested there, so there's no guarantee.
+Likely to work in near-future versions. May also work in some previous versions, but it's untested there, so there's no guarantee.
