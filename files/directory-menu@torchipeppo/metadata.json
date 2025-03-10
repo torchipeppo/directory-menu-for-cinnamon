@@ -1,8 +1,9 @@
 {
     "uuid": "directory-menu-DEV@torchipeppo-DEV",
     "name": "Directory Menu DEV",
-    "description": "Quickly navigate through directories on your system using a dropdown menu. (DEVELOPMENT)",
-    "version": "0.8.0",
+    "description": "Quickly navigate through directories on your system using a dropdown menu.",
+    "comments": "This is the development version.",
+    "version": "0.9.0",
     "author": "torchipeppo-DEV",
     "max-instances": "-1"
 }
